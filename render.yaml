@@ -1,7 +1,10 @@
 services:
   - type: web
-    name: mini-http-server
+    name: mini-http-messaging-server
     env: python
-    buildCommand: "pip install -r requirements.txt"
+    buildCommand: ""
     startCommand: "python server.py"
-    pythonVersion: 3.11.9
+    disk:
+      name: data
+      mountPath: /opt/render/project/src
+      sizeGB: 1
