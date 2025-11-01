@@ -1,0 +1,79 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Mini Messaging — Login / Register</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Mini Messaging</h1>
+    <div class="small">Private messaging & file sharing</div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:18px">
+    <section>
+      <h2>Login</h2>
+      <form id="loginForm" onsubmit="login(event)">
+        <input id="login-username" placeholder="Username" required>
+        <input id="login-password" type="password" placeholder="Password" required>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <a href="/templates/forgot_password.html">Forgot Password?</a>
+          <button type="submit">Login</button>
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <h2>Register</h2>
+      <form id="regForm" onsubmit="register(event)">
+        <input id="reg-username" placeholder="Username" required minlength="3">
+        <input id="reg-email" type="email" placeholder="Email (for password reset)">
+        <input id="reg-password" type="password" placeholder="Password" required minlength="4">
+        <input id="reg-confirm" type="password" placeholder="Confirm password" required>
+        <div style="display:flex;justify-content:flex-end">
+          <button type="submit">Register</button>
+        </div>
+      </form>
+    </section>
+  </div>
+</div>
+
+<script>
+function showAlert(msg){ alert(msg) }
+
+async function register(e){
+  e.preventDefault();
+  const u=document.getElementById('reg-username').value.trim();
+  const email=document.getElementById('reg-email').value.trim();
+  const p=document.getElementById('reg-password').value;
+  const c=document.getElementById('reg-confirm').value;
+  if(p!==c){ showAlert('Passwords do not match'); return; }
+  const body=`username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}&email=${encodeURIComponent(email)}`;
+  const res=await fetch('/register',{method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
+  const j=await res.json();
+  if(j.success){ showAlert('Registered — please login'); document.getElementById('regForm').reset(); }
+  else showAlert(j.message || 'Registration failed');
+}
+
+async function login(e){
+  e.preventDefault();
+  const u=document.getElementById('login-username').value.trim();
+  const p=document.getElementById('login-password').value;
+  const body=`username=${encodeURIComponent(u)}&password=${encodeURIComponent(p)}`;
+  const res=await fetch('/login',{method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
+  const j=await res.json();
+  if(j.success){
+    // store username locally for frontend usage
+    localStorage.setItem('mm_user', u);
+    // redirect
+    window.location.href = '/templates/dashboard.html';
+  } else {
+    showAlert(j.message || 'Login failed');
+  }
+}
+</script>
+</body>
+</html>

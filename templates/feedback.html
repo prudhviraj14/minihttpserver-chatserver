@@ -1,0 +1,25 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Feedback</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<div class="container">
+  <h2>Feedback / Report</h2>
+  <form onsubmit="sendFeedback(event)">
+    <label>Type</label>
+    <select id="fb-type"><option value="general">General</option><option value="bug">Bug</option><option value="complaint">Complaint</option></select>
+    <textarea id="fb-message" rows="6" placeholder="Describe the issue..."></textarea>
+    <div style="display:flex;justify-content:flex-end"><button type="submit">Submit</button></div>
+  </form>
+  <p><a href="/templates/dashboard.html">← Back to Dashboard</a></p>
+</div>
+<script>
+async function sendFeedback(e){
+  e.preventDefault();
+  const type = document.getElementById('fb-type').value;
+  const message = document.getElementById('fb-message').value.trim();
+  const res = await fetch('/feedback',{method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`type=${encodeURIComponent(type)}&message=${encodeURIComponent(message)}`});
+  const j = await res.json();
+  if(j.success){ alert('Thanks — feedback submitted'); window.location.href='/templates/dashboard.html'; }
+  else alert(j.message || 'Failed');
+}
+</script>
+</body></html>

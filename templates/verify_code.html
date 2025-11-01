@@ -1,0 +1,28 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verify Code</title><link rel="stylesheet" href="/static/style.css"></head>
+<body>
+<div class="container">
+  <h2>Verify Reset Code</h2>
+  <form onsubmit="verify(event)">
+    <input id="vc-username" placeholder="Username" required>
+    <input id="vc-code" placeholder="6-digit code" required>
+    <div style="display:flex;justify-content:flex-end"><button type="submit">Verify</button></div>
+  </form>
+  <p><a href="/templates/index.html">Back to login</a></p>
+</div>
+<script>
+const params = new URLSearchParams(location.search);
+const preuser = params.get('username');
+if(preuser) document.getElementById('vc-username').value = preuser;
+
+async function verify(e){
+  e.preventDefault();
+  const u=document.getElementById('vc-username').value.trim();
+  const code=document.getElementById('vc-code').value.trim();
+  const res = await fetch('/verify-code',{method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:`username=${encodeURIComponent(u)}&code=${encodeURIComponent(code)}`});
+  const j = await res.json();
+  if(j.success){ alert('Code verified'); window.location.href = '/templates/reset_password.html?username='+encodeURIComponent(u); }
+  else alert(j.message || 'Invalid code');
+}
+</script>
+</body></html>

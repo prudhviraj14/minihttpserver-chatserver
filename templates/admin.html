@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin — Mini Messaging</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+  <h2>Admin Panel</h2>
+  <div>
+    <button onclick="adminRefresh()">Refresh Data</button>
+    <button onclick="logout()">Logout</button>
+  </div>
+
+  <h3>Users</h3>
+  <table class="table" id="usersTable"><thead><tr><th>Username</th><th>Email</th><th>Admin</th><th>Created</th><th>Last Login</th></tr></thead><tbody></tbody></table>
+
+  <h3>Messages</h3>
+  <div id="messagesList" style="max-height:300px;overflow:auto"></div>
+
+  <h3>Feedback</h3>
+  <div id="feedbackList"></div>
+</div>
+
+<script>
+async function adminRefresh(){
+  const res = await fetch('/admin-data'); // admin data requires admin session cookie
+  const j = await res.json();
+  if(!j.success){ alert(j.message || 'Unauthorized — login as admin'); window.location.href='/templates/index.html'; return; }
+  const users = j.users, messages = j.messages, feedback = j.feedback;
+  const utbody = users.map(u => `<tr><td>${u.username}</td><td>${u.email || ''}</td><td>${u.is_admin? 'Yes':'No'}</td><td>${u.created_at}</td><td>${u.last_login_at||'Never'}</td></tr>`).join('');
+  document.querySelector('#usersTable tbody').innerHTML = utbody;
+
+  const mhtml = messages.map(m => `<div style="padding:8px;border-bottom:1px solid #eee"><strong>${m.sender} → ${m.receiver}</strong> <span class="small">${m.sent_at}</span><div>${m.message || ''}</div>${m.file_path?`<div><a href="/download?file=${encodeURIComponent(m.file_path)}">Download</a></div>`:''}</div>`).join('');
+  document.getElementById('messagesList').innerHTML = mhtml;
+
+  const fhtml = feedback.map(f => `<div style="padding:8px;border-bottom:1px solid #eee"><strong>${f.username}</strong> <span class="small">${f.created_at}</span><div>${f.type}</div><div>${f.message}</div></div>`).join('');
+  document.getElementById('feedbackList').innerHTML = fhtml;
+}
+
+function logout(){ fetch('/logout',{method:'POST'}).then(()=>location.href='/templates/index.html'); }
+
+// Auto refresh every 30s
+setInterval(adminRefresh, 30000);
+adminRefresh();
+</script>
+</body>
+</html>

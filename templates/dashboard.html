@@ -1,0 +1,127 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard — Mini Messaging</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="container">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <h2>Chat</h2>
+    <div>
+      <button onclick="gotoFeedback()">Feedback</button>
+      <button onclick="logout()">Logout</button>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;flex-direction:column">
+    <div>
+      <h3>Contacts</h3>
+      <div id="contacts">Loading...</div>
+    </div>
+
+    <div id="chatPanel" style="display:none">
+      <h3>Chat with <span id="chatWith"></span></h3>
+      <div id="messages" style="max-height:320px;overflow:auto;border:1px solid #eee;padding:8px;border-radius:8px;background:#fafafa"></div>
+
+      <div style="margin-top:8px">
+        <form id="sendForm" onsubmit="sendMessage(event)">
+          <div class="two">
+            <input id="msgText" placeholder="Type a message">
+            <input id="fileInput" type="file">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button type="submit">Send</button>
+            <button type="button" onclick="backToContacts()">Back</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const me = localStorage.getItem('mm_user');
+if(!me) window.location.href = '/templates/index.html';
+
+async function loadContacts(){
+  const res = await fetch('/contacts', {method:'POST'});
+  const j = await res.json();
+  if(!j.success){ alert(j.message||'Not authenticated'); localStorage.removeItem('mm_user'); window.location.href='/templates/index.html'; return; }
+  const c = j.contacts;
+  const html = c.map(u => `<div style="padding:8px;border-bottom:1px solid #eee"><strong>${u.username}</strong><div class="small">${u.email || ''}</div><div style="margin-top:6px"><button onclick="openChat('${u.username}')">Chat</button></div></div>`).join('');
+  document.getElementById('contacts').innerHTML = html || 'No other users yet.';
+}
+async function openChat(other){
+  document.getElementById('chatPanel').style.display='block';
+  document.getElementById('chatWith').innerText = other;
+  document.getElementById('contacts').style.display='none';
+  await loadMessages(other);
+}
+function backToContacts(){ document.getElementById('chatPanel').style.display='none'; document.getElementById('contacts').style.display='block'; }
+
+async function loadMessages(other){
+  const body = `other=${encodeURIComponent(other)}`;
+  const res = await fetch('/get-messages',{method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
+  const j = await res.json();
+  if(!j.success){ alert(j.message||'Error'); return; }
+  const msgs = j.messages;
+  const out = msgs.map(m => {
+    const who = m.sender === me ? 'You' : m.sender;
+    const fileLink = m.file_path ? `<div><a href="/download?file=${encodeURIComponent(m.file_path)}">Download</a></div>` : '';
+    return `<div style="margin-bottom:8px"><strong>${who}</strong> <span class="small">${m.sent_at}</span><div>${escapeHtml(m.message || '')}</div>${fileLink}</div>`;
+  }).join('');
+  document.getElementById('messages').innerHTML = out || '<div class="small">No messages yet</div>';
+  document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+}
+
+function escapeHtml(s){ return s ? s.replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;') : ''; }
+
+async function sendMessage(e){
+  e.preventDefault();
+  const other = document.getElementById('chatWith').innerText;
+  const fileInput = document.getElementById('fileInput');
+  const text = document.getElementById('msgText').value || '';
+
+  if(fileInput.files.length === 0){
+    const body = `to=${encodeURIComponent(other)}&message=${encodeURIComponent(text)}`;
+    const res = await fetch('/send-message',{method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
+    const j = await res.json();
+    if(j.success){ document.getElementById('msgText').value = ''; await loadMessages(other); }
+    else alert(j.message||'Failed');
+  } else {
+    // upload file as base64 to keep simple
+    const f = fileInput.files[0];
+    const reader = new FileReader();
+    reader.onload = async function(){
+      const base = reader.result.split(',')[1];
+      const body = `to=${encodeURIComponent(other)}&filename=${encodeURIComponent(f.name)}&filedata=${encodeURIComponent(base)}&message=${encodeURIComponent(text)}`;
+      const res = await fetch('/upload-file',{method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body});
+      const j = await res.json();
+      if(j.success){ document.getElementById('msgText').value=''; fileInput.value=''; await loadMessages(other); }
+      else alert(j.message||'Upload failed');
+    }
+    reader.readAsDataURL(f);
+  }
+}
+
+function gotoFeedback(){ window.location.href = '/templates/feedback.html'; }
+async function logout(){
+  await fetch('/logout',{method:'POST'});
+  localStorage.removeItem('mm_user');
+  window.location.href = '/templates/index.html';
+}
+
+// refresh chat periodically when open
+let refreshTimer = setInterval(async ()=>{
+  const chatWith = document.getElementById('chatWith').innerText;
+  if(chatWith) await loadMessages(chatWith);
+}, 5000);
+
+loadContacts();
+</script>
+</body>
+</html>

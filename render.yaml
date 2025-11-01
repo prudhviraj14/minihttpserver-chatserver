@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: mini-http-messaging-server
+    env: python
+    buildCommand: ""
+    startCommand: "python server.py"
+    disk:
+      name: data
+      mountPath: /opt/render/project/src
+      sizeGB: 1
